@@ -23,6 +23,11 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 pythonpath = ["backend", "backend/tests"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore:resource_tracker.*:UserWarning",
+    "ignore::DeprecationWarning",
+]
 
 [tool.black]
 line-length = 88

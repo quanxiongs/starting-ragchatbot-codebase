@@ -109,6 +109,24 @@ def tool_manager_with_search(mock_vector_store_with_results):
     return manager, search_tool
 
 
+# ── RAGSystem mock (for API endpoint tests) ───────────────────────────────────
+
+@pytest.fixture
+def mock_rag_system():
+    """Mock RAGSystem for API endpoint tests."""
+    mock = MagicMock()
+    mock.session_manager.create_session.return_value = "session-1"
+    mock.query.return_value = (
+        "Here is the answer.",
+        [{"label": "Intro to RAG - Lesson 1", "url": "https://example.com/lesson/1"}],
+    )
+    mock.get_course_analytics.return_value = {
+        "total_courses": 2,
+        "course_titles": ["Intro to RAG", "Advanced ML"],
+    }
+    return mock
+
+
 @pytest.fixture
 def tool_manager_with_both_tools(mock_vector_store_with_results):
     """ToolManager with both CourseSearchTool and CourseOutlineTool for multi-round tests."""
