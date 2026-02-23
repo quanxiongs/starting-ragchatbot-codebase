@@ -1,4 +1,5 @@
 """Shared test helper functions (not pytest fixtures)."""
+
 from unittest.mock import MagicMock
 
 

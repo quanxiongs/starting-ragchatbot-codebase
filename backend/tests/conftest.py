@@ -1,4 +1,5 @@
 """Shared fixtures for all tests."""
+
 import sys
 import os
 import pytest
@@ -12,6 +13,7 @@ sys.path.insert(0, _tests_dir)
 
 
 # ── VectorStore mock ──────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_vector_store():
@@ -27,6 +29,7 @@ def mock_vector_store():
 def mock_vector_store_with_results(mock_vector_store):
     """VectorStore mock pre-loaded with two search results."""
     from vector_store import SearchResults
+
     mock_vector_store.search.return_value = SearchResults(
         documents=[
             "Lesson 1 content: This is about RAG systems.",
@@ -46,6 +49,7 @@ def mock_vector_store_with_results(mock_vector_store):
 def mock_vector_store_empty(mock_vector_store):
     """VectorStore mock that returns empty results."""
     from vector_store import SearchResults
+
     mock_vector_store.search.return_value = SearchResults(
         documents=[], metadata=[], distances=[]
     )
@@ -56,6 +60,7 @@ def mock_vector_store_empty(mock_vector_store):
 def mock_vector_store_error(mock_vector_store):
     """VectorStore mock that returns a search error."""
     from vector_store import SearchResults
+
     mock_vector_store.search.return_value = SearchResults.empty(
         "Search error: collection not found"
     )
@@ -63,6 +68,7 @@ def mock_vector_store_error(mock_vector_store):
 
 
 # ── Anthropic client mock ─────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_anthropic_client():
@@ -72,10 +78,12 @@ def mock_anthropic_client():
 
 # ── AIGenerator fixture ───────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def ai_generator(mock_anthropic_client):
     """AIGenerator with mocked Anthropic client (no real API calls)."""
     from ai_generator import AIGenerator
+
     gen = AIGenerator.__new__(AIGenerator)
     gen.client = mock_anthropic_client
     gen.model = "claude-sonnet-4-20250514"
@@ -89,10 +97,12 @@ def ai_generator(mock_anthropic_client):
 
 # ── ToolManager fixture ───────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def tool_manager_with_search(mock_vector_store_with_results):
     """ToolManager with a real CourseSearchTool backed by a mocked VectorStore."""
     from search_tools import ToolManager, CourseSearchTool
+
     manager = ToolManager()
     search_tool = CourseSearchTool(mock_vector_store_with_results)
     manager.register_tool(search_tool)
@@ -106,14 +116,16 @@ def tool_manager_with_both_tools(mock_vector_store_with_results):
 
     outline_store = MagicMock()
     outline_store._resolve_course_name.return_value = "Intro to RAG"
-    outline_store.get_all_courses_metadata.return_value = [{
-        "title": "Intro to RAG",
-        "course_link": "https://example.com/rag",
-        "lessons": [
-            {"lesson_number": 1, "lesson_title": "What is RAG?"},
-            {"lesson_number": 2, "lesson_title": "Vector Stores"},
-        ],
-    }]
+    outline_store.get_all_courses_metadata.return_value = [
+        {
+            "title": "Intro to RAG",
+            "course_link": "https://example.com/rag",
+            "lessons": [
+                {"lesson_number": 1, "lesson_title": "What is RAG?"},
+                {"lesson_number": 2, "lesson_title": "Vector Stores"},
+            ],
+        }
+    ]
 
     manager = ToolManager()
     search_tool = CourseSearchTool(mock_vector_store_with_results)

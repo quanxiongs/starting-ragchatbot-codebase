@@ -4,6 +4,7 @@ Tests for AIGenerator - all Anthropic API calls are mocked.
 These tests ensure the agentic loop (tool use -> tool execution -> final answer)
 is correctly wired, and that error paths propagate properly.
 """
+
 import pytest
 from unittest.mock import MagicMock
 from helpers import make_text_response, make_tool_use_response
@@ -36,7 +37,9 @@ class TestDirectResponse:
 
         call_kwargs = mock_anthropic_client.messages.create.call_args[1]
         messages = call_kwargs["messages"]
-        assert any("my specific question" in str(m.get("content", "")) for m in messages)
+        assert any(
+            "my specific question" in str(m.get("content", "")) for m in messages
+        )
 
     def test_api_called_with_system_prompt(self, ai_generator, mock_anthropic_client):
         """The Anthropic API call includes a non-empty system prompt."""
@@ -98,9 +101,12 @@ class TestToolUseLoop:
             tool_input={"query": "what is RAG"},
         )
         # call 2: loop intermediate (end_turn → direct_answer returned, no synthesis call)
-        loop_end_response = make_text_response("RAG combines retrieval with generation.")
+        loop_end_response = make_text_response(
+            "RAG combines retrieval with generation."
+        )
         mock_anthropic_client.messages.create.side_effect = [
-            tool_response, loop_end_response
+            tool_response,
+            loop_end_response,
         ]
 
         result = ai_generator.generate_response(
@@ -126,7 +132,8 @@ class TestToolUseLoop:
         )
         loop_end_response = make_text_response("Here is the answer.")
         mock_anthropic_client.messages.create.side_effect = [
-            tool_response, loop_end_response
+            tool_response,
+            loop_end_response,
         ]
 
         ai_generator.generate_response(
@@ -141,7 +148,8 @@ class TestToolUseLoop:
 
         # Find the tool_result message in the user role
         tool_result_messages = [
-            m for m in messages
+            m
+            for m in messages
             if m.get("role") == "user" and isinstance(m.get("content"), list)
         ]
         assert len(tool_result_messages) == 1
@@ -157,12 +165,21 @@ class TestToolUseLoop:
 
         # call 1: initial → tool_use; call 2: loop iter 1 → tool_use; call 3: loop iter 2 → tool_use
         # cap exhausted → call 4: synthesis (no tools)
-        tool_resp_1 = make_tool_use_response("search_course_content", "tu_c1", {"query": "q1"})
-        tool_resp_2 = make_tool_use_response("search_course_content", "tu_c2", {"query": "q2"})
-        tool_resp_3 = make_tool_use_response("search_course_content", "tu_c3", {"query": "q3"})
+        tool_resp_1 = make_tool_use_response(
+            "search_course_content", "tu_c1", {"query": "q1"}
+        )
+        tool_resp_2 = make_tool_use_response(
+            "search_course_content", "tu_c2", {"query": "q2"}
+        )
+        tool_resp_3 = make_tool_use_response(
+            "search_course_content", "tu_c3", {"query": "q3"}
+        )
         synthesis_response = make_text_response("Synthesized answer.")
         mock_anthropic_client.messages.create.side_effect = [
-            tool_resp_1, tool_resp_2, tool_resp_3, synthesis_response
+            tool_resp_1,
+            tool_resp_2,
+            tool_resp_3,
+            synthesis_response,
         ]
 
         result = ai_generator.generate_response(
@@ -190,7 +207,8 @@ class TestToolUseLoop:
         )
         loop_end_response = make_text_response("Answer.")
         mock_anthropic_client.messages.create.side_effect = [
-            tool_response, loop_end_response
+            tool_response,
+            loop_end_response,
         ]
 
         ai_generator.generate_response(
@@ -219,7 +237,8 @@ class TestToolUseLoop:
         )
         loop_end_response = make_text_response("I could not find anything.")
         mock_anthropic_client.messages.create.side_effect = [
-            tool_response, loop_end_response
+            tool_response,
+            loop_end_response,
         ]
 
         # Should not raise — ToolManager returns an error string for unknown tools
@@ -250,7 +269,9 @@ class TestTwoRoundToolLoop:
       call 4: final no-tools synthesis
     """
 
-    def _make_two_round_side_effect(self, mock_anthropic_client, final_text="Final answer."):
+    def _make_two_round_side_effect(
+        self, mock_anthropic_client, final_text="Final answer."
+    ):
         """Helper: wire up mock for 2 tool rounds ending with end_turn (3 API calls total)."""
         tool_resp_1 = make_tool_use_response(
             tool_name="search_course_content",
@@ -262,9 +283,13 @@ class TestTwoRoundToolLoop:
             tool_id="tu_r2",
             tool_input={"query": "RAG details"},
         )
-        loop_end_resp = make_text_response(final_text)  # loop round 2 → end_turn, direct_answer
+        loop_end_resp = make_text_response(
+            final_text
+        )  # loop round 2 → end_turn, direct_answer
         mock_anthropic_client.messages.create.side_effect = [
-            tool_resp_1, tool_resp_2, loop_end_resp
+            tool_resp_1,
+            tool_resp_2,
+            loop_end_resp,
         ]
         return tool_resp_1, tool_resp_2, loop_end_resp
 
@@ -288,7 +313,9 @@ class TestTwoRoundToolLoop:
     ):
         """The returned string is the text from the loop's end_turn response (not a synthesis call)."""
         manager, _ = tool_manager_with_search
-        self._make_two_round_side_effect(mock_anthropic_client, final_text="Direct answer.")
+        self._make_two_round_side_effect(
+            mock_anthropic_client, final_text="Direct answer."
+        )
 
         result = ai_generator.generate_response(
             query="Tell me about RAG",
@@ -350,9 +377,12 @@ class TestTwoRoundToolLoop:
             tool_manager=manager,
         )
 
-        round2_messages = mock_anthropic_client.messages.create.call_args_list[1][1]["messages"]
+        round2_messages = mock_anthropic_client.messages.create.call_args_list[1][1][
+            "messages"
+        ]
         tool_result_messages = [
-            m for m in round2_messages
+            m
+            for m in round2_messages
             if m.get("role") == "user" and isinstance(m.get("content"), list)
         ]
         assert len(tool_result_messages) >= 1
@@ -369,12 +399,21 @@ class TestTwoRoundToolLoop:
         # call 2: loop iter 1 → tool_use (continues)
         # call 3: loop iter 2 → tool_use (cap exhausted, direct_answer=None)
         # call 4: synthesis (no tools) — fires because cap was hit
-        tool_resp_1 = make_tool_use_response("search_course_content", "tu_1", {"query": "q1"})
-        tool_resp_2 = make_tool_use_response("search_course_content", "tu_2", {"query": "q2"})
-        tool_resp_3 = make_tool_use_response("search_course_content", "tu_3", {"query": "q3"})
+        tool_resp_1 = make_tool_use_response(
+            "search_course_content", "tu_1", {"query": "q1"}
+        )
+        tool_resp_2 = make_tool_use_response(
+            "search_course_content", "tu_2", {"query": "q2"}
+        )
+        tool_resp_3 = make_tool_use_response(
+            "search_course_content", "tu_3", {"query": "q3"}
+        )
         final_resp = make_text_response("Done.")
         mock_anthropic_client.messages.create.side_effect = [
-            tool_resp_1, tool_resp_2, tool_resp_3, final_resp
+            tool_resp_1,
+            tool_resp_2,
+            tool_resp_3,
+            final_resp,
         ]
 
         ai_generator.generate_response(
@@ -400,7 +439,9 @@ class TestTwoRoundToolLoop:
         )
         loop_end_resp = make_text_response("Combined answer.")
         mock_anthropic_client.messages.create.side_effect = [
-            tool_resp_1, tool_resp_2, loop_end_resp
+            tool_resp_1,
+            tool_resp_2,
+            loop_end_resp,
         ]
 
         ai_generator.generate_response(
@@ -413,9 +454,13 @@ class TestTwoRoundToolLoop:
         assert len(sources) > 0
         labels = [s["label"] for s in sources]
         # search tool produces lesson-level sources (e.g. "Intro to RAG - Lesson 1")
-        assert any("Lesson" in label for label in labels), "Expected search tool source with lesson"
+        assert any(
+            "Lesson" in label for label in labels
+        ), "Expected search tool source with lesson"
         # outline tool produces course-level sources (e.g. "Intro to RAG" with no lesson suffix)
-        assert any(label == "Intro to RAG" for label in labels), "Expected outline tool source"
+        assert any(
+            label == "Intro to RAG" for label in labels
+        ), "Expected outline tool source"
 
     def test_tool_error_propagates_as_exception(
         self, ai_generator, mock_anthropic_client, tool_manager_with_search
@@ -424,10 +469,14 @@ class TestTwoRoundToolLoop:
         from unittest.mock import patch
 
         manager, _ = tool_manager_with_search
-        tool_resp = make_tool_use_response("search_course_content", "tu_err", {"query": "q"})
+        tool_resp = make_tool_use_response(
+            "search_course_content", "tu_err", {"query": "q"}
+        )
         mock_anthropic_client.messages.create.return_value = tool_resp
 
-        with patch.object(manager, "execute_tool", side_effect=RuntimeError("DB unavailable")):
+        with patch.object(
+            manager, "execute_tool", side_effect=RuntimeError("DB unavailable")
+        ):
             with pytest.raises(RuntimeError, match="DB unavailable"):
                 ai_generator.generate_response(
                     query="test",
@@ -441,7 +490,9 @@ class TestTwoRoundToolLoop:
         """If Claude returns end_turn after round 1 inside the loop, total is 2 calls (no synthesis)."""
         manager, _ = tool_manager_with_search
         # call 1: initial → tool_use; call 2: loop iter 1 → end_turn (direct_answer returned)
-        tool_resp = make_tool_use_response("search_course_content", "tu_1", {"query": "q"})
+        tool_resp = make_tool_use_response(
+            "search_course_content", "tu_1", {"query": "q"}
+        )
         loop_end_text = make_text_response("Early answer.")
         mock_anthropic_client.messages.create.side_effect = [tool_resp, loop_end_text]
 
@@ -461,8 +512,11 @@ class TestAPIErrorPropagation:
     def test_authentication_error_propagates(self, ai_generator, mock_anthropic_client):
         """AuthenticationError from Anthropic client propagates up (not swallowed)."""
         import anthropic
-        mock_anthropic_client.messages.create.side_effect = anthropic.AuthenticationError(
-            message="Invalid API key", response=MagicMock(status_code=401), body={}
+
+        mock_anthropic_client.messages.create.side_effect = (
+            anthropic.AuthenticationError(
+                message="Invalid API key", response=MagicMock(status_code=401), body={}
+            )
         )
 
         with pytest.raises(anthropic.AuthenticationError):
@@ -471,8 +525,9 @@ class TestAPIErrorPropagation:
     def test_api_connection_error_propagates(self, ai_generator, mock_anthropic_client):
         """Network errors from Anthropic client propagate up."""
         import anthropic
-        mock_anthropic_client.messages.create.side_effect = anthropic.APIConnectionError(
-            request=MagicMock()
+
+        mock_anthropic_client.messages.create.side_effect = (
+            anthropic.APIConnectionError(request=MagicMock())
         )
 
         with pytest.raises(anthropic.APIConnectionError):

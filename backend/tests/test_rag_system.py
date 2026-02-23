@@ -5,6 +5,7 @@ components mocked (no real ChromaDB, no real Anthropic API calls).
 Also includes regression tests for the ChromaDB None-metadata bug using
 an in-memory ephemeral ChromaDB (no server required).
 """
+
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -42,7 +43,9 @@ def rag_system_mocked(mock_config):
         mock_vs_instance = MockVS.return_value
         mock_vs_instance.search.return_value = SearchResults(
             documents=["RAG combines retrieval with generation."],
-            metadata=[{"course_title": "Intro to RAG", "lesson_number": 1, "chunk_index": 0}],
+            metadata=[
+                {"course_title": "Intro to RAG", "lesson_number": 1, "chunk_index": 0}
+            ],
             distances=[0.1],
         )
         mock_vs_instance.get_lesson_link.return_value = "https://example.com/lesson/1"
@@ -52,7 +55,9 @@ def rag_system_mocked(mock_config):
 
         # Configure mock AIGenerator
         mock_ai_instance = MockAI.return_value
-        mock_ai_instance.generate_response.return_value = "RAG is a technique for grounding LLMs."
+        mock_ai_instance.generate_response.return_value = (
+            "RAG is a technique for grounding LLMs."
+        )
 
         # Configure mock SessionManager
         mock_sm_instance = MockSM.return_value
@@ -60,6 +65,7 @@ def rag_system_mocked(mock_config):
         mock_sm_instance.create_session.return_value = "session_1"
 
         from rag_system import RAGSystem
+
         system = RAGSystem(mock_config)
 
         yield system, mock_ai_instance, mock_vs_instance
@@ -103,21 +109,29 @@ class TestRAGSystemQuery:
         system, _, _ = rag_system_mocked
 
         system.tool_manager.get_last_sources = MagicMock(
-            return_value=[{"label": "Course A - Lesson 1", "url": "https://example.com"}]
+            return_value=[
+                {"label": "Course A - Lesson 1", "url": "https://example.com"}
+            ]
         )
         system.tool_manager.reset_sources = MagicMock()
 
         system.query("first query")
         system.tool_manager.reset_sources.assert_called_once()
 
-    def test_session_history_retrieved_when_session_id_provided(self, rag_system_mocked):
+    def test_session_history_retrieved_when_session_id_provided(
+        self, rag_system_mocked
+    ):
         """When a session_id is given, conversation history is fetched from SessionManager."""
         system, mock_ai, _ = rag_system_mocked
-        system.session_manager.get_conversation_history.return_value = "User: hi\nAssistant: hello"
+        system.session_manager.get_conversation_history.return_value = (
+            "User: hi\nAssistant: hello"
+        )
 
         system.query("follow-up question", session_id="session_1")
 
-        system.session_manager.get_conversation_history.assert_called_once_with("session_1")
+        system.session_manager.get_conversation_history.assert_called_once_with(
+            "session_1"
+        )
         call_kwargs = mock_ai.generate_response.call_args[1]
         assert call_kwargs["conversation_history"] is not None
 
@@ -142,6 +156,7 @@ class TestRAGSystemQuery:
     def test_query_propagates_ai_generator_exception(self, rag_system_mocked):
         """If AIGenerator raises, the exception propagates out of query() (no silent swallowing)."""
         import anthropic
+
         system, mock_ai, _ = rag_system_mocked
         mock_ai.generate_response.side_effect = anthropic.AuthenticationError(
             message="Invalid key", response=MagicMock(status_code=401), body={}
@@ -158,7 +173,9 @@ class TestRAGSystemSourcesFlow:
         """Sources collected by ToolManager are returned as part of query() output."""
         system, _, _ = rag_system_mocked
 
-        expected_sources = [{"label": "Intro to RAG - Lesson 1", "url": "https://example.com"}]
+        expected_sources = [
+            {"label": "Intro to RAG - Lesson 1", "url": "https://example.com"}
+        ]
         system.search_tool.last_sources = expected_sources
 
         _, sources = system.query("what is RAG?")
@@ -199,15 +216,19 @@ class TestVectorStoreNoneMetadataBug:
             chunk_index=0,
         )
 
-        with pytest.raises(Exception):  # TypeError or ValueError depending on chromadb version
+        with pytest.raises(
+            Exception
+        ):  # TypeError or ValueError depending on chromadb version
             col.add(
                 documents=[chunk.content],
                 ids=["id_0"],
-                metadatas=[{
-                    "course_title": chunk.course_title,
-                    "lesson_number": chunk.lesson_number,  # None -> error
-                    "chunk_index": chunk.chunk_index,
-                }],
+                metadatas=[
+                    {
+                        "course_title": chunk.course_title,
+                        "lesson_number": chunk.lesson_number,  # None -> error
+                        "chunk_index": chunk.chunk_index,
+                    }
+                ],
             )
 
     def test_adding_chunk_with_sentinel_lesson_number_succeeds(self):
@@ -223,11 +244,13 @@ class TestVectorStoreNoneMetadataBug:
         col.add(
             documents=["Content without a lesson"],
             ids=["id_0"],
-            metadatas=[{
-                "course_title": "My Course",
-                "lesson_number": -1,  # FIX: sentinel value instead of None
-                "chunk_index": 0,
-            }],
+            metadatas=[
+                {
+                    "course_title": "My Course",
+                    "lesson_number": -1,  # FIX: sentinel value instead of None
+                    "chunk_index": 0,
+                }
+            ],
         )
         results = col.get(ids=["id_0"])
         assert results["metadatas"][0]["lesson_number"] == -1
@@ -245,16 +268,25 @@ class TestVectorStoreNoneMetadataBug:
         # Use ephemeral client for this test
         ephemeral_client = chromadb.EphemeralClient()
 
-        with patch("vector_store.chromadb.PersistentClient", return_value=ephemeral_client):
-            with patch("vector_store.chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction") as mock_ef:
+        with patch(
+            "vector_store.chromadb.PersistentClient", return_value=ephemeral_client
+        ):
+            with patch(
+                "vector_store.chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction"
+            ) as mock_ef:
                 mock_ef.return_value = MagicMock()
                 from vector_store import VectorStore
+
                 vs = VectorStore.__new__(VectorStore)
                 vs.max_results = 5
                 vs.client = ephemeral_client
                 vs.embedding_function = mock_ef.return_value
-                vs.course_catalog = vs.client.get_or_create_collection("test_catalog_fixed")
-                vs.course_content = vs.client.get_or_create_collection("test_content_fixed")
+                vs.course_catalog = vs.client.get_or_create_collection(
+                    "test_catalog_fixed"
+                )
+                vs.course_content = vs.client.get_or_create_collection(
+                    "test_content_fixed"
+                )
 
         chunk_with_none = CourseChunk(
             content="Some content",

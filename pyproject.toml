@@ -17,8 +17,21 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "black>=24.0.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 pythonpath = ["backend", "backend/tests"]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    chroma_db
+  | \.git
+  | __pycache__
+)/
+'''
