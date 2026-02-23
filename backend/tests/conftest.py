@@ -97,3 +97,27 @@ def tool_manager_with_search(mock_vector_store_with_results):
     search_tool = CourseSearchTool(mock_vector_store_with_results)
     manager.register_tool(search_tool)
     return manager, search_tool
+
+
+@pytest.fixture
+def tool_manager_with_both_tools(mock_vector_store_with_results):
+    """ToolManager with both CourseSearchTool and CourseOutlineTool for multi-round tests."""
+    from search_tools import ToolManager, CourseSearchTool, CourseOutlineTool
+
+    outline_store = MagicMock()
+    outline_store._resolve_course_name.return_value = "Intro to RAG"
+    outline_store.get_all_courses_metadata.return_value = [{
+        "title": "Intro to RAG",
+        "course_link": "https://example.com/rag",
+        "lessons": [
+            {"lesson_number": 1, "lesson_title": "What is RAG?"},
+            {"lesson_number": 2, "lesson_title": "Vector Stores"},
+        ],
+    }]
+
+    manager = ToolManager()
+    search_tool = CourseSearchTool(mock_vector_store_with_results)
+    outline_tool = CourseOutlineTool(outline_store)
+    manager.register_tool(search_tool)
+    manager.register_tool(outline_tool)
+    return manager, search_tool, outline_tool

@@ -181,10 +181,11 @@ class CourseOutlineTool(Tool):
 
 class ToolManager:
     """Manages available tools for the AI"""
-    
+
     def __init__(self):
         self.tools = {}
-    
+        self._aggregated_sources: list = []
+
     def register_tool(self, tool: Tool):
         """Register any tool that implements the Tool interface"""
         tool_def = tool.get_tool_definition()
@@ -193,21 +194,30 @@ class ToolManager:
             raise ValueError("Tool must have a 'name' in its definition")
         self.tools[tool_name] = tool
 
-    
+
     def get_tool_definitions(self) -> list:
         """Get all tool definitions for Anthropic tool calling"""
         return [tool.get_tool_definition() for tool in self.tools.values()]
-    
+
     def execute_tool(self, tool_name: str, **kwargs) -> str:
         """Execute a tool by name with given parameters"""
         if tool_name not in self.tools:
             return f"Tool '{tool_name}' not found"
-        
+
         return self.tools[tool_name].execute(**kwargs)
-    
+
+    def set_aggregated_sources(self, sources: list):
+        """Store sources aggregated across multiple tool-call rounds"""
+        self._aggregated_sources = sources
+
     def get_last_sources(self) -> list:
-        """Get sources from the last search operation"""
-        # Check all tools for last_sources attribute
+        """Get sources from the last search operation.
+
+        Multi-round queries store aggregated sources via set_aggregated_sources().
+        Single-round queries fall back to scanning per-tool last_sources.
+        """
+        if self._aggregated_sources:
+            return self._aggregated_sources
         for tool in self.tools.values():
             if hasattr(tool, 'last_sources') and tool.last_sources:
                 return tool.last_sources
@@ -215,6 +225,7 @@ class ToolManager:
 
     def reset_sources(self):
         """Reset sources from all tools that track sources"""
+        self._aggregated_sources = []
         for tool in self.tools.values():
             if hasattr(tool, 'last_sources'):
                 tool.last_sources = []
