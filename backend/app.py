@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 
+import anthropic
 from config import config
 from rag_system import RAGSystem
 
@@ -40,10 +41,15 @@ class QueryRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
 
+class SourceItem(BaseModel):
+    """A single source citation with optional link"""
+    label: str
+    url: str
+
 class QueryResponse(BaseModel):
     """Response model for course queries"""
     answer: str
-    sources: List[str]
+    sources: List[SourceItem]
     session_id: str
 
 class CourseStats(BaseModel):
@@ -69,6 +75,11 @@ async def query_documents(request: QueryRequest):
             answer=answer,
             sources=sources,
             session_id=session_id
+        )
+    except anthropic.AuthenticationError:
+        raise HTTPException(
+            status_code=500,
+            detail="Anthropic API key is missing or invalid. Check your .env file."
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

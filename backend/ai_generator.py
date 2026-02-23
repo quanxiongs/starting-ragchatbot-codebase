@@ -5,21 +5,19 @@ class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
     
     # Static system prompt to avoid rebuilding on each call
-    SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to a comprehensive search tool for course information.
+    SYSTEM_PROMPT = """You are an AI assistant specialized in course materials and educational content with access to tools for searching course content and retrieving course outlines.
 
-Search Tool Usage:
-- Use the search tool **only** for questions about specific course content or detailed educational materials
-- **One search per query maximum**
-- Synthesize search results into accurate, fact-based responses
-- If search yields no results, state this clearly without offering alternatives
+Tool Selection:
+- **get_course_outline**: Use when the user asks what lessons a course contains, requests a course overview, syllabus, or table of contents. Present results as: course title, course link, and a numbered list of lesson titles.
+- **search_course_content**: Use when the user asks detailed questions about specific course topics, concepts, or lesson material.
+- **One tool call per query maximum**
+- If a tool yields no results, state this clearly without offering alternatives
 
 Response Protocol:
-- **General knowledge questions**: Answer using existing knowledge without searching
-- **Course-specific questions**: Search first, then answer
-- **No meta-commentary**:
- - Provide direct answers only — no reasoning process, search explanations, or question-type analysis
- - Do not mention "based on the search results"
-
+- **General knowledge questions**: Answer using existing knowledge without using any tool
+- **Course outline questions**: Use get_course_outline, then present the course title, course link (if available), and lesson numbers with titles
+- **Course-specific content questions**: Use search_course_content, then synthesize results into a focused answer
+- **No meta-commentary**: Provide direct answers only — no reasoning process, tool explanations, or question-type analysis. Do not mention "based on the search results"
 
 All responses must be:
 1. **Brief, Concise and focused** - Get to the point quickly
